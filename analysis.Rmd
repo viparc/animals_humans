@@ -1,5 +1,5 @@
 ---
-title: "Title"
+title: "AMR selective pressure"
 csl: the-american-naturalist.csl
 output:
   html_document:
@@ -37,7 +37,7 @@ title wherever you want to display the reference list.
 ```{r general_options, include = FALSE}
 knitr::knit_hooks$set(
   margin = function(before, options, envir) {
-    if (before) par(mgp = c(1.5, .5, 0), bty = "n", plt = c(.105, .97, .13, .97))
+    if (before) par(mgp = c(1.5, .5, 0), bty = "n", plt = c(.11, .97, .135, 1))
     else NULL
   },
   prompt = function(before, options, envir) {
@@ -50,5 +50,161 @@ knitr::opts_chunk$set(margin = TRUE, prompt = TRUE, comment = "",
                       fig.width = 4.24725, fig.retina = 2, fig.align = "center")
 
 options(width = 137)
+```
+
+AMU / kg of animal
+
+AMU / kg of human
+
+We need
+
+* AMU in human
+* AMU in animals
+* number of people
+* weight of people
+* number of animal heads
+* weight of animal
+
+Total human biomass:
+
+$$
+m_h = \sum_a n_{h_a} \times m_{h_a}
+$$
+
+Total biomass of animal $a$:
+
+$$
+m_c = \sum_a n_{c_a} \times m_{c_a}
+$$
+
+$$
+AMU = DDD \times d \times p
+$$
+
+were
+
+* $DDD$ = Defined Daily Dose (in g / kg / day)
+* $d$ = duration of treatment (in days)
+* $p$ = probability of treatment in an individual's lifetime (or number of
+treaments divided by number of individuals)
+
+## Skyline plot
+
+```{r}
+library(magrittr)
+library(dplyr)
+```
+
+```{r}
+vietnam <- readxl::read_excel("AMU_VN_Europe_2.xlsx")
+#vietnam$Species %<>% sapply(sub, pattern = "Pigs", replacement = "Pig")
+```
+
+```{r}
+colors <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99')
+skylineplot <- function(df) {
+  library(magrittr)
+  df %$% 
+    structure(list(breaks = cumsum(c(0, `Bodymass (1000s tonnes)`)),
+                   counts = `mg/Kg`,
+                   equidist = TRUE),
+              class = "histogram") %>%
+    assign("tmp", ., 1) %>% 
+    plot(col = colors, xlab = "cumulative biomass (1,000 tonnes)", axes = FALSE,
+         ylab = "AMU (mg/kg)", main = NA, xlim = c(0, 20000), ylim = c(0, 500))
+  ats <- seq(0, 20000, 5000)
+  axis(1, ats, sub("000$", ",000", ats))
+  axis(2)
+  legend("topright", legend = df$Species, fill = colors, bty = "n")
+  
+  mids <- tmp$breaks[-length(tmp$breaks)] + diff(tmp$breaks) / 2
+  arrows(mids, df$lower, mids, df$upper, .05, 90, 3)
+}
+```
+
+```{r fig.width = 4.5, fig.height = 4, eval = FALSE}
+vietnam %>% 
+  mutate(amu = `Bodymass (1000s tonnes)` * `mg/Kg`) %>% 
+  arrange(desc(amu)) %>% 
+  skylineplot()
+```
+
+```{r}
+new_data <- setNames(read.csv("new_data.txt"),
+                     c("Species", "Bodymass (1000s tonnes)", "mg/Kg", "lower", "upper"))
+```
+
+```{r fig.width = 4.5, fig.height = 4}
+new_data %>% 
+  mutate(amu = `Bodymass (1000s tonnes)` * `mg/Kg`) %>% 
+  arrange(desc(amu)) %>% 
+  skylineplot()
+```
+
+
+## VN and EU summaries
+
+```{r}
+vn <- readxl::read_excel("AMU_VN_Europe.xlsx", "VN summary")
+```
+
+```{r}
+eu <- readxl::read_excel("AMU_VN_Europe.xlsx", "Europe summary")
+```
+
+
+```{r}
+vn %>% 
+  mutate(amu = `mg/Kg (unadjusted)` * `Bodymass (1000s tonnes)`,
+         breaks = 100 * `Bodymass (1000s tonnes)` / sum(`Bodymass (1000s tonnes)`)) %>% 
+  arrange(desc(amu)) %$%
+  structure(list(breaks = cumsum(c(0, breaks)),
+                 counts = `mg/Kg (unadjusted)`,
+                 equidist = TRUE),
+            class = "histogram") %>% 
+  plot(col = colors, xlab = "proportion of total biomass", axes = T,
+          ylab = "AMU (mg/kg)", main = NA, ylim = c(0, 210))
+```
+
+```{r}
+eu %>% 
+  mutate(amu = `mg/Kg (unadjusted)` * `Bodymass (1000s tonnes)`,
+         breaks = 100 * `Bodymass (1000s tonnes)` / sum(`Bodymass (1000s tonnes)`)) %>% 
+  arrange(desc(amu)) %$%
+  structure(list(breaks = cumsum(c(0, breaks)),
+                 counts = `mg/Kg (unadjusted)`,
+                 equidist = TRUE),
+            class = "histogram") %>% 
+  plot(col = colors, xlab = "proportion of total biomass", axes = T,
+          ylab = "AMU (mg/kg)", main = NA, ylim = c(0, 210))
+```
+
+
+```{r}
+comparison_plot <- function(x) {
+  x %>% 
+    mutate(amu = `mg/Kg (unadjusted)` * `Bodymass (1000s tonnes)`,
+           breaks = 100 * `Bodymass (1000s tonnes)` / sum(`Bodymass (1000s tonnes)`)) %>% 
+    arrange(desc(amu)) %$%
+    structure(list(breaks = cumsum(c(0, breaks)),
+                   counts = `mg/Kg (unadjusted)`,
+                   equidist = TRUE),
+              class = "histogram") %>% 
+    plot(col = colors, xlab = "proportion of total biomass", axes = T,
+             ylab = "AMU (mg/kg)", main = NA, ylim = c(0, 210))
+}
+```
+
+```{r fig.width = 8}
+opar <- par(mfrow = c(1, 2))
+comparison_plot(vn)
+mtext("Vietnam", 3, -1)
+text(36.33971, 100, "animals")
+text(86.33971, 100, "humans", col = "white")
+comparison_plot(eu)
+mtext("European Union", 3, -1)
+text(31.83558, 100, "animals")
+text(81.83558, 100, "humans", col = "white")
+par(opar)
 ```
 
