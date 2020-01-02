@@ -101,7 +101,8 @@ vietnam <- readxl::read_excel("AMU_VN_Europe_2.xlsx")
 ```
 
 ```{r}
-colors <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99')
+#colors <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#fdbf6f','#ff7f00','#cab2d6','#6a3d9a','#ffff99')
+colors <- c('#a6cee3','#1f78b4','#b2df8a','#33a02c','#fb9a99','#e31a1c','#FFF933','#808080','#cab2d6','#6a3d9a','#ffff99')
 skylineplot <- function(df) {
   library(magrittr)
   df %$% 
@@ -110,9 +111,9 @@ skylineplot <- function(df) {
                    equidist = TRUE),
               class = "histogram") %>%
     assign("tmp", ., 1) %>% 
-    plot(col = colors, xlab = "cumulative biomass (1,000 tonnes)", axes = FALSE,
+    plot(col = colors, xlab = "cumulative biomass (1,000 tonnes)                          ", axes = FALSE,
          ylab = "AMU (mg/kg)", main = NA, xlim = c(0, 20000), ylim = c(0, 500))
-  ats <- seq(0, 20000, 5000)
+  ats <- seq(0, 15000, 5000)
   axis(1, ats, sub("000$", ",000", ats))
   axis(2)
   legend("topright", legend = df$Species, fill = colors, bty = "n")
@@ -136,6 +137,30 @@ new_data <- setNames(read.csv("new_data.txt"),
 
 ```{r fig.width = 4.5, fig.height = 4}
 new_data %>% 
+  mutate(amu = `Bodymass (1000s tonnes)` * `mg/Kg`) %>% 
+  arrange(desc(amu)) %>% 
+  skylineplot()
+```
+
+```{r fig.width = 6, fig.height = 4}
+new_data2 <- new_data
+new_data2[, 1] <- as.character(new_data2[, 1])
+
+new_data2[8, 2] <- new_data2[8, 2] + new_data2[10, 2]
+new_data2 <- new_data2[-10, ]
+new_data2[8, 1] <- "Goat and sheep"
+
+new_data2[7, 2] <- new_data2[7, 2] + new_data2[9, 2]
+new_data2[7, 1] <- "Other avian"
+new_data2 <- new_data2[-9, ]
+
+new_data2[2, 1] <- "Pig"
+
+new_data2[4, 3] <- mean(unlist(new_data2[4, 4:5]))
+new_data2[6, 3] <- mean(unlist(new_data2[6, 4:5]))
+new_data2[8, 3] <- mean(unlist(new_data2[8, 4:5]))
+
+new_data2 %>% 
   mutate(amu = `Bodymass (1000s tonnes)` * `mg/Kg`) %>% 
   arrange(desc(amu)) %>% 
   skylineplot()
@@ -191,7 +216,7 @@ comparison_plot <- function(x) {
                    equidist = TRUE),
               class = "histogram") %>% 
     plot(col = colors, xlab = "proportion of total biomass", axes = T,
-             ylab = "AMU (mg/kg)", main = NA, ylim = c(0, 210))
+             ylab = "AMU (mg/kg)", main = NA, ylim = c(0, 300))
 }
 ```
 
@@ -208,3 +233,22 @@ text(81.83558, 100, "humans", col = "white")
 par(opar)
 ```
 
+```{r}
+vn2 <- vn
+vn2[1, 2] <- 262.8
+vn2[2, 2] <- 245.6
+vn2[2, 3] <- 11125.5
+```
+
+```{r fig.width = 8}
+opar <- par(mfrow = c(1, 2), plt = c(.11, .97, .135, .98))
+comparison_plot(vn2)
+mtext("Vietnam", 3, -1)
+text(36.33971, 100, "animals")
+text(86.33971, 100, "humans", col = "white")
+comparison_plot(eu)
+mtext("European Union", 3, -1)
+text(31.83558, 100, "animals")
+text(81.83558, 100, "humans", col = "white")
+par(opar)
+```
